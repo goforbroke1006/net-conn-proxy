@@ -11,7 +11,7 @@ import (
 func main() {
 	var (
 		upstreamAddrArg string
-		downloadAddrArg string = "0.0.0.0:18080"
+		downloadAddrArg = "0.0.0.0:18080"
 	)
 
 	flag.StringVar(&upstreamAddrArg, "upstream", upstreamAddrArg, "upstream addr")
@@ -35,12 +35,15 @@ func main() {
 			}
 
 			go func(conn net.Conn) {
-				downstream, err := net.Dial("tcp", downloadAddrArg)
+				upstream, err := net.Dial("tcp", upstreamAddrArg)
 				if err != nil {
 					fmt.Println("ERROR:", err)
 					return
 				}
-				_ = downstream
+				_ = upstream
+
+				go pipe(conn, upstream, ">>>")
+				go pipe(upstream, conn, "<<<")
 			}(conn)
 		}
 	}()
@@ -48,6 +51,21 @@ func main() {
 	<-ctx.Done()
 }
 
-func pipe(src net.Conn, dst net.Conn) {
-	// TODO:
+func pipe(src net.Conn, dst net.Conn, dir string) {
+	for {
+		buffer := make([]byte, 1024)
+		readLen, err := src.Read(buffer)
+		if err != nil {
+			break
+		}
+
+		buffer = buffer[:readLen]
+
+		_, err = dst.Write(buffer)
+		if err != nil {
+			break
+		}
+
+		fmt.Println(dir, string(buffer))
+	}
 }
