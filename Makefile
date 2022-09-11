@@ -6,5 +6,5 @@ build:
 .PHONY: build
 
 install:
-	go install ./
+	@bash ./bin/install.sh
 .PHONY: install
