@@ -1,14 +1,16 @@
-# proxy
+# net-conn-proxy
+
+Proxy application to print client-server communication details.
+
+### Usage
+
+Install to ${GOBIN} and run:
 
 ```shell
 make
 make install
+
+net-conn-proxy -p tcp -d 127.0.0.1:8080 -u www.bing.com:80
 ```
 
-```shell
-goforbroke1006-proxy-tcp --upstream www.bing.com:80 --downstream 0.0.0.0:8080
-```
-
-```shell
-echo -e "GET /search?q=hello-world HTTP/2\nUser-Agent: curl/7.54.0\nAccept: */*" | nc 127.0.0.1 8080
-```
+Open downstream address [https://127.0.0.1:8080](https://127.0.0.1:8080) in browser.

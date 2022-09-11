@@ -1,7 +1,10 @@
+all: build
+.PHONY: all
+
 build:
-	go build -o ./build/goforbroke1006-proxy-tcp ./cmd/tcp
+	go build ./
 .PHONY: build
 
 install:
-	cp ./build/* ${GOPATH}/bin/
+	go install ./
 .PHONY: install
