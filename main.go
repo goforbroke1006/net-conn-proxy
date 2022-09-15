@@ -8,12 +8,18 @@ import (
 	"os"
 	"os/signal"
 
+	"go.uber.org/zap"
+
 	"github.com/goforbroke1006/net-conn-proxy/internal/common"
 	"github.com/goforbroke1006/net-conn-proxy/internal/tcp"
 	"github.com/goforbroke1006/net-conn-proxy/internal/udp"
 )
 
 func main() {
+	logger, _ := zap.NewProduction()
+	defer func() { _ = logger.Sync() }()
+	zap.ReplaceGlobals(logger)
+
 	var (
 		protocolArg       string
 		downstreamAddrArg = "0.0.0.0:0"
@@ -24,7 +30,7 @@ func main() {
 	flag.StringVar(&protocolArg, "p", protocolArg, "protocol - tcp or udp")
 	flag.StringVar(&downstreamAddrArg, "d", downstreamAddrArg, "downstream addr like 120.0.0.1:8080")
 	flag.StringVar(&upstreamAddrArg, "u", upstreamAddrArg, "upstream addr like 8.8.8.8:80")
-	flag.Uint64Var(&bufferSizeArg, "bs", bufferSizeArg, "pipe buffer size")
+	flag.Uint64Var(&bufferSizeArg, "b", bufferSizeArg, "pipe buffer size")
 	flag.Parse()
 
 	if len(protocolArg) == 0 {
@@ -47,12 +53,11 @@ func main() {
 	fmt.Println("proxying", upstreamAddrArg, "on", protocolArg, "buffer size", bufferSizeArg)
 
 	ctx, stop := signal.NotifyContext(context.Background())
-	defer stop()
 
 	if protocolArg == "tcp" {
 		listener, err := net.Listen("tcp", downstreamAddrArg)
 		if err != nil {
-			panic(err)
+			zap.L().Fatal("downstream TCP", zap.Error(err))
 		}
 		defer func() { _ = listener.Close() }()
 
@@ -61,6 +66,7 @@ func main() {
 				clientConn, err := listener.Accept()
 				if err != nil {
 					fmt.Println("ERROR:", err)
+					zap.L().Error("accept tcp conn", zap.Error(err))
 					continue
 				}
 				go tcp.InitTCPProxy(clientConn, protocolArg, downstreamAddrArg, upstreamAddrArg, bufferSizeArg)
@@ -75,13 +81,15 @@ func main() {
 		}
 		downstreamConn, err := net.ListenUDP("udp", addr)
 		if err != nil {
-			panic(err)
+			zap.L().Fatal("downstream UDP", zap.Error(err))
 		}
 		defer func() { _ = downstreamConn.Close() }()
 
-		go udp.InitUDPProxy(downstreamConn, upstreamAddrArg, bufferSizeArg)
+		proxy := udp.NewProxyDataGram(downstreamConn, upstreamAddrArg, bufferSizeArg)
+		go proxy.Run()
 	}
 
 	<-ctx.Done()
+	defer stop()
 	fmt.Println("bye...")
 }

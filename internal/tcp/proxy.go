@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"net"
 	"strings"
 	"sync"
@@ -12,7 +13,7 @@ import (
 func InitTCPProxy(client net.Conn, proto, downstreamAddrArg, upstreamAddr string, bufSize uint64) {
 	upstream, err := net.Dial(proto, upstreamAddr)
 	if err != nil {
-		fmt.Println("ERROR:", err)
+		zap.L().Error("dial downstream", zap.Error(err))
 		return
 	}
 
@@ -42,7 +43,9 @@ func InitTCPProxy(client net.Conn, proto, downstreamAddrArg, upstreamAddr string
 	go pipe(upstream, client, bufSize, pipesWg, replacementU2D)
 	pipesWg.Wait()
 
-	fmt.Printf("disconnection %s <<<>>> %s\n", client.RemoteAddr().String(), upstream.RemoteAddr().String())
+	zap.L().Info("disconnection",
+		zap.String("d", client.RemoteAddr().String()),
+		zap.String("u", upstream.RemoteAddr().String()))
 }
 
 func pipe(src net.Conn, dst net.Conn, bufSize uint64, wg *sync.WaitGroup, replacement map[string]string) {
@@ -76,10 +79,12 @@ ExchangeLoop:
 		}
 
 		if readErr != nil {
+			zap.L().Error("read from", zap.Error(readErr), zap.String("ip", src.RemoteAddr().String()))
 			break ExchangeLoop
 		}
 
 		if writeErr != nil {
+			zap.L().Error("write to", zap.Error(readErr), zap.String("ip", dst.RemoteAddr().String()))
 			break ExchangeLoop
 		}
 	}
