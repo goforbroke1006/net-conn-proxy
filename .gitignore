@@ -2,3 +2,4 @@
 /net-conn-proxy
 /net-conn-proxy.exe
 *.log.txt
+/release
