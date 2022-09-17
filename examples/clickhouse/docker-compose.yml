@@ -1,0 +1,49 @@
+version: "3"
+
+services:
+
+  http-proxy:
+    ports:
+      - "8123:8123"
+    image: docker.io/goforbroke1006/net-conn-proxy:latest
+    command: http -d 0.0.0.0:8123 -o clickhouse-db.dc.local:8123 -b 2048
+    depends_on:
+      - clickhouse-db
+
+  tcp-proxy:
+    ports:
+      - "9000:9000"
+    image: docker.io/goforbroke1006/net-conn-proxy:latest
+    command: tcp -d 0.0.0.0:9000 -u clickhouse-db.dc.local:9000 -b 2048
+    depends_on:
+      - clickhouse-db
+
+  # jdbc:clickhouse://localhost:8123/demo
+  clickhouse-db:
+    ports:
+      - "18123:8123"
+      - "19000:9000"
+    hostname: clickhouse-db.dc.local
+    restart: "on-failure"
+    image: clickhouse/clickhouse-server:22.1.2.2-alpine
+    environment:
+      CLICKHOUSE_DB: "demo"
+      CLICKHOUSE_USER: "demo"
+      CLICKHOUSE_PASSWORD: "demo"
+    volumes:
+      - ./migration.sql:/docker-entrypoint-initdb.d/0000-migration.sql
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/?query=SELECT%201 || exit 1
+
+  clickhouse-db--fixture:
+    restart: on-failure
+    image: clickhouse/clickhouse-client:22.1.2.2
+    volumes:
+      - ./fixture.sql:/fixture.sql
+    entrypoint: sh
+    command:
+      - -c
+      - |
+        clickhouse-client --host=clickhouse-db.dc.local --port=9000 --user=demo --password=demo --database=demo < /fixture.sql
+    depends_on:
+      - clickhouse-db

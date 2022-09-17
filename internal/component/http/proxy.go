@@ -1,17 +1,18 @@
-package tcp
+package http
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"net"
 	"strings"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/goforbroke1006/net-conn-proxy/internal/common"
 )
 
-func InitTCPProxy(client net.Conn, proto, downstreamAddrArg, upstreamAddr string, bufSize uint64) {
-	upstream, err := net.Dial(proto, upstreamAddr)
+func InitHTTPProxy(client net.Conn, downstreamAddrArg, originAddr string, bufSize uint64) {
+	upstream, err := net.Dial("tcp", originAddr)
 	if err != nil {
 		zap.L().Error("dial downstream", zap.Error(err))
 		return
@@ -19,7 +20,7 @@ func InitTCPProxy(client net.Conn, proto, downstreamAddrArg, upstreamAddr string
 
 	var (
 		downstreamHost = common.GetHostFromAddr(downstreamAddrArg)
-		upstreamHost   = common.GetHostFromAddr(upstreamAddr)
+		upstreamHost   = common.GetHostFromAddr(originAddr)
 	)
 
 	// dumb mechanism to hide the fact of using a proxy
@@ -29,8 +30,9 @@ func InitTCPProxy(client net.Conn, proto, downstreamAddrArg, upstreamAddr string
 		replacementU2D map[string]string
 	)
 	replacementD2U = map[string]string{
-		downstreamAddrArg: upstreamAddr,
+		downstreamAddrArg: originAddr,
 		downstreamHost:    upstreamHost,
+		"127.0.0.1:8080":  originAddr, // FIXME: dirty workaround for demo example, need better solution for replacing Host in request/response body
 	}
 	replacementU2D = make(map[string]string, len(replacementD2U))
 	for k, v := range replacementD2U {

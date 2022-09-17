@@ -1,0 +1,9 @@
+version: "3"
+
+services:
+
+  http-proxy:
+    ports:
+      - "8080:8080"
+    image: docker.io/goforbroke1006/net-conn-proxy:latest
+    command: http -d 0.0.0.0:8080 -o example.com:80 -b 64

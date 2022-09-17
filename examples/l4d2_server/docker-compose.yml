@@ -1,0 +1,25 @@
+version: "3"
+
+services:
+
+  tcp-proxy:
+    ports:
+      - "27015:27015/tcp"
+    image: docker.io/goforbroke1006/net-conn-proxy:latest
+    command: tcp -d 0.0.0.0:27015 -u 127.0.0.1:47015 -b 2048
+
+  udp-proxy:
+    ports:
+      - "27015:27015/udp"
+    image: docker.io/goforbroke1006/net-conn-proxy:latest
+    command: udp -d 0.0.0.0:27015 -u 127.0.0.1:47015 -b 64
+
+  l4d2-server:
+    ports:
+      - "47015:27015/tcp"
+      - "47015:27015/udp"
+    image: goforbroke1006/l4d2-server:latest
+    environment:
+      L4D2_SERVER_HOSTNAME: L4D2.server.docker-compose.local
+      L4D2_SERVER_SV_REGION: 3
+      L4D2_SERVER_MAX_PLAYERS: 4
